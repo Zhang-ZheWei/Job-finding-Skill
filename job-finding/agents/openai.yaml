@@ -1,0 +1,4 @@
+interface:
+  display_name: "岗位采集 V2"
+  short_description: "分阶段采集、初筛、背调、评分并生成BOSS岗位决策报告"
+  default_prompt: "使用 $job-finding 帮我分阶段采集、初筛、背调、评分并生成 BOSS 岗位决策报告。"

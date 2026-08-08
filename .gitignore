@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Local task data and generated reports
+job-research-data/
+result/
+task-*/
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
