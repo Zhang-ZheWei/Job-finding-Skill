@@ -54,7 +54,6 @@ node --check job-finding/scripts/boss_collect_s1.mjs
 node --check job-finding/scripts/boss_read_s2.mjs
 ```
 
-提交前请确保没有把真实简历、岗位数据、访问令牌、Cookie 或运行输出加入版本控制。
 
 ## 贡献与反馈
 
