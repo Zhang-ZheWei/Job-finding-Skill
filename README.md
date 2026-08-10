@@ -53,7 +53,8 @@ S1、S2 和 S4 需要访问真实网页。登录状态、验证码、安全验�
 ```text
 请使用 $skill-installer 安装以下 GitHub Skill：
 
-https://github.com/Zhang-ZheWei/Job-finding-Skill/tree/v0.1.1/job-finding
+仓库地址：https://github.com/Zhang-ZheWei/Job-finding-Skill.git
+Skill 路径：job-finding
 
 请安装到默认 Codex Skills 目录。安装前检查是否存在同名 skill；如果已经存在，请先告诉我，不要直接覆盖。
 
