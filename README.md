@@ -46,22 +46,18 @@ S1、S2 和 S4 需要访问真实网页。登录状态、验证码、安全验�
 
 ## 安装
 
-克隆仓库：
+推荐直接使用 Codex Agent 从 GitHub 安装，无需手动复制文件。
 
-```bash
-git clone https://github.com/Zhang-ZheWei/Job-finding-Skill.git
-cd Job-finding-Skill
+将下面的内容发送给 Codex，并把仓库地址替换为实际地址：
+
+```text
+使用 $skill-installer 从以下 GitHub 仓库安装 job-finding Skill：
+
+仓库地址：https://github.com/<用户名>/<仓库名>
+Skill 路径：job-finding
+
+请安装到默认 Codex Skills 目录。安装前检查是否存在同名 Skill；如果已经存在，请先告诉我，不要直接覆盖。安装完成后请验证 Skill 结构，并告诉我实际安装路径。
 ```
-
-将仓库中的 `job-finding/` 文件夹复制到 Codex skills 目录：
-
-```bash
-CODEX_SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
-mkdir -p "$CODEX_SKILLS_DIR"
-cp -R job-finding "$CODEX_SKILLS_DIR/job-finding"
-```
-
-如果目标位置已存在旧版本，请先确认其中没有需要保留的本地修改。安装或更新后，重新开始一个 Codex 任务。
 
 ## 开始使用
 
