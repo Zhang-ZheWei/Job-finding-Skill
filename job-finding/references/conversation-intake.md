@@ -16,7 +16,7 @@ S0 通过固定问题收集用户的岗位目标、简历、个人画像、城�
 
 ## 2. 对话规则
 
-1. 新任务必须先按[任务创建与隔离契约](task-isolation.md)创建唯一时间戳 `task_id` 和独立目录，再从 S0 开始。
+1. 新任务必须先按[任务创建与隔离契约](task-isolation.md)解析默认 `tasks_root`，但不得创建目录；用户确认完整任务卡后才创建唯一时间戳 `task_id` 和独立目录。
 2. 每条回复只提出一个新问题或一个确认问题。
 3. 使用本文的固定话术，只替换占位符内容，不临时改写问题。
 4. 用户已经主动提供的信息必须吸收，已满足的问题可以跳过，不重复索要。
@@ -26,8 +26,8 @@ S0 通过固定问题收集用户的岗位目标、简历、个人画像、城�
 8. 当前任务没有简历时必须索要。只有用户明确表示不提供，才能记录 `resume_status=declined`。
 9. 不把推测写成个人事实，不保存简历全文、完整对话或求职无关隐私。
 10. `进入下一步`只推进信息确认，不代表允许执行。
-11. 只有用户对完整任务卡回复`确认执行`后才能写入 `config.json`。
-12. `RUN_ROOT`必须使用 `task_manager.py create` 返回的新目录；不得使用当前工作区根目录、人工命名目录或任何旧任务目录。
+11. 只有用户对完整任务卡回复`确认执行`后才能创建任务目录并写入 `config.json`。
+12. `TASKS_ROOT`必须使用 `task_manager.py resolve-root` 返回且经用户确认的绝对路径；`RUN_ROOT`必须使用确认后由 `task_manager.py create` 返回的新目录。不得使用模型猜测路径、旧任务目录或未经用户确认的当前工作区。
 
 ## 3. 固定提问模板
 
@@ -153,7 +153,20 @@ python3 "$SKILL_DIR/scripts/task_config.py" inspect-url \
 
 ### 3.5 最终任务卡
 
-信息齐全后使用：
+信息齐全后，先取得默认任务根目录：
+
+```bash
+python3 "$SKILL_DIR/scripts/task_manager.py" resolve-root
+```
+
+用户此前已经要求自定义目录时，使用：
+
+```bash
+python3 "$SKILL_DIR/scripts/task_manager.py" resolve-root \
+  --tasks-root "$USER_TASKS_ROOT"
+```
+
+命令无法解析合法路径时，只询问用户提供其他目录，不展示可确认执行的任务卡。返回`writable=false`但路径合法时仍展示任务卡，并在保存目录后注明“创建时可能需要系统写入授权”。路径可用时使用：
 
 > 本次执行目标：  
 >   
@@ -167,12 +180,15 @@ python3 "$SKILL_DIR/scripts/task_config.py" inspect-url \
 > - 明确排除：……  
 > - 软偏好：……  
 > - 公司偏好与关注风险：……  
-> - 任务标识：……  
-> - 任务数据目录：……  
+> - 任务标识：确认执行后自动生成
+> - 任务保存根目录：……
+> - 独立任务目录：确认执行后在上述目录中自动创建 `task-时间戳`子目录
 >   
-> 这张任务卡还需要调整吗？如信息无误并希望我开始执行，请回复“确认执行”。
+> 如需更改任务保存目录，请直接提供新路径；如使用以上目录且其他信息无误，请回复“确认执行”。
 
 通用筛选时把候选人背景显示为“不使用”。用户没有排除、软偏好或公司偏好时，对应项显示“无明确条件”。
+
+用户提供新路径后，必须再次调用`resolve-root --tasks-root`，并重新展示包含新绝对路径的完整任务卡。任务卡展示期间不得创建 `tasks_root`、`run_root` 或 `task.json`。
 
 ### 3.6 过早确认
 
@@ -393,7 +409,14 @@ python3 "$SKILL_DIR/scripts/task_config.py" inspect-url \
 
 ## 5. 配置写入与门禁
 
-用户对完整任务卡回复`确认执行`后，模型只提交第 4 节的已确认字段：
+用户对完整任务卡回复`确认执行`后，先在任务卡确认的目录下创建任务：
+
+```bash
+python3 "$SKILL_DIR/scripts/task_manager.py" create \
+  --tasks-root "$CONFIRMED_TASKS_ROOT"
+```
+
+保留命令返回的 `task_id`、`tasks_root` 和 `run_root`。然后模型只提交第 4 节的已确认字段：
 
 ```bash
 python3 "$SKILL_DIR/scripts/task_config.py" prepare \
@@ -429,7 +452,10 @@ S0 完成门禁：
 - 至少一个合法城市 URL；
 - 搜索方式和目标数量关系正确；
 - 完整任务卡已展示；
+- 任务卡已展示脚本解析出的合法 `tasks_root`；
+- 当`tasks_root`需要工作区外写入授权时，已在创建阶段取得授权，或用户已改用可写目录；
 - 用户已明确回复`确认执行`；
+- `task_manager.py create`返回的`tasks_root`与任务卡确认值一致；
 - `task_config.py validate` 通过。
 - `task.json.config_hash`与`config.json.config_hash`一致。
 

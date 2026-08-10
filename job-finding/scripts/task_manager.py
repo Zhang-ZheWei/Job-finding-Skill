@@ -5,8 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import platform
 import re
 import sys
+import uuid
+from ctypes import POINTER, Structure, byref, c_ubyte, c_ulong, c_ushort, c_void_p, c_wchar_p
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -18,16 +22,136 @@ SCHEMA_VERSION = 1
 TASK_ID_PATTERN = re.compile(r"^task-(\d{8})-(\d{6})-(\d{6})$")
 CONFIG_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 TASK_FIELDS = {"schema_version", "task_id", "created_at", "config_hash"}
+DEFAULT_TASKS_DIR_NAME = "Codex岗位搜索任务"
+WINDOWS_DOCUMENTS_FOLDER_ID = "fdd39ad0-238f-46af-adb4-6c85480369c7"
 
 
-def _normal_tasks_root(tasks_root: str) -> Path:
+class _WindowsGuid(Structure):
+    _fields_ = [
+        ("data1", c_ulong),
+        ("data2", c_ushort),
+        ("data3", c_ushort),
+        ("data4", c_ubyte * 8),
+    ]
+
+
+def _windows_documents_dir() -> Path:
+    """通过 Windows Known Folder API 获取可能被 OneDrive 重定向的文档目录。"""
+    try:
+        import ctypes
+
+        folder_id = _WindowsGuid.from_buffer_copy(
+            uuid.UUID(WINDOWS_DOCUMENTS_FOLDER_ID).bytes_le
+        )
+        value = c_wchar_p()
+        shell32 = ctypes.windll.shell32
+        ole32 = ctypes.windll.ole32
+        shell32.SHGetKnownFolderPath.argtypes = [
+            POINTER(_WindowsGuid),
+            c_ulong,
+            c_void_p,
+            POINTER(c_wchar_p),
+        ]
+        shell32.SHGetKnownFolderPath.restype = c_ulong
+        result = shell32.SHGetKnownFolderPath(byref(folder_id), 0, None, byref(value))
+        if result != 0 or not value.value:
+            raise OSError(f"SHGetKnownFolderPath 返回 {result}")
+        documents = Path(value.value)
+        ole32.CoTaskMemFree(value)
+        return documents
+    except (AttributeError, OSError, ValueError) as exc:
+        raise S1Error(
+            "无法取得 Windows 文档目录，请由用户指定任务保存目录",
+            "documents_root_unavailable",
+        ) from exc
+
+
+def default_tasks_root(
+    *,
+    system_name: str | None = None,
+    home: Path | None = None,
+    windows_documents: Path | None = None,
+) -> Path:
+    """返回当前系统易于用户查找的默认任务根目录。"""
+    detected = system_name or platform.system()
+    if detected == "Darwin":
+        documents = (home or Path.home()) / "Documents"
+    elif detected == "Windows":
+        documents = windows_documents or _windows_documents_dir()
+    else:
+        raise S1Error(
+            f"当前系统 {detected or 'unknown'} 没有预设默认目录，请由用户指定",
+            "unsupported_default_tasks_root",
+        )
+    return documents.expanduser() / DEFAULT_TASKS_DIR_NAME
+
+
+def _platform_label(system_name: str) -> str:
+    if system_name == "Darwin":
+        return "macOS"
+    if system_name == "Windows":
+        return "Windows"
+    return system_name or "unknown"
+
+
+def _normal_tasks_root(tasks_root: str, *, create: bool) -> Path:
     if not isinstance(tasks_root, str) or not tasks_root.strip():
         raise S1Error("tasks_root 不能为空", "invalid_tasks_root")
-    root = Path(tasks_root).expanduser().resolve()
-    if root.exists() and (not root.is_dir() or root.is_symlink()):
+    candidate = Path(tasks_root).expanduser()
+    if candidate.exists() and candidate.is_symlink():
         raise S1Error("tasks_root 必须是普通目录且不能是符号链接", "unsafe_tasks_root")
-    root.mkdir(parents=True, exist_ok=True)
+    root = candidate.resolve()
+    if root.exists() and not root.is_dir():
+        raise S1Error("tasks_root 必须是普通目录且不能是符号链接", "unsafe_tasks_root")
+    if create:
+        try:
+            root.mkdir(parents=True, exist_ok=True)
+        except PermissionError as exc:
+            raise S1Error(
+                "tasks_root 当前不可写；请先取得该目录的写入授权，授权后仍失败再更换目录",
+                "tasks_root_permission_denied",
+            ) from exc
+        except OSError as exc:
+            raise S1Error("无法创建 tasks_root，请由用户指定其他目录", "invalid_tasks_root") from exc
     return root
+
+
+def resolve_tasks_root(
+    tasks_root: str | None = None,
+    *,
+    system_name: str | None = None,
+    home: Path | None = None,
+    windows_documents: Path | None = None,
+    create: bool = False,
+) -> dict[str, Any]:
+    """解析默认或用户指定目录；仅在 create=True 时创建目录。"""
+    detected = system_name or platform.system()
+    source = "custom" if isinstance(tasks_root, str) and tasks_root.strip() else "default"
+    proposed = (
+        tasks_root
+        if source == "custom"
+        else str(
+            default_tasks_root(
+                system_name=detected,
+                home=home,
+                windows_documents=windows_documents,
+            )
+        )
+    )
+    root = _normal_tasks_root(proposed, create=create)
+    probe = root if root.exists() else root.parent
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    writable = probe.is_dir() and os.access(probe, os.W_OK)
+    return {
+        "ok": True,
+        "platform": _platform_label(detected),
+        "source": source,
+        "tasks_root": str(root),
+        "exists": root.exists(),
+        "writable": writable,
+        "created": create,
+    }
 
 
 def _normal_moment(value: datetime) -> datetime:
@@ -76,13 +200,14 @@ def _validate_task_document(value: Any) -> dict[str, Any]:
 
 
 def create_task(
-    tasks_root: str,
+    tasks_root: str | None = None,
     *,
     now: datetime | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     """创建一个仅由当前时间戳命名的新任务目录。"""
-    root = _normal_tasks_root(tasks_root)
+    resolved_root = resolve_tasks_root(tasks_root, create=True)
+    root = Path(resolved_root["tasks_root"])
     if now is not None and clock is not None:
         raise S1Error("now 与 clock 不能同时提供", "invalid_task_time")
     clock = clock or (lambda: datetime.now().astimezone())
@@ -122,6 +247,7 @@ def create_task(
             "ok": True,
             "task_id": task_id,
             "created_at": document["created_at"],
+            "tasks_root": str(root),
             "run_root": str(run_root),
         }
 
@@ -148,6 +274,7 @@ def validate_task(run_root: str, task_id: str) -> dict[str, Any]:
         "ok": True,
         "task_id": task_id,
         "created_at": document["created_at"],
+        "tasks_root": str(path.parent),
         "run_root": str(path),
         "config_hash": document["config_hash"],
         "config_bound": document["config_hash"] is not None,
@@ -170,12 +297,14 @@ def bind_config(run_root: str, task_id: str, config_hash: str) -> dict[str, Any]
     return validate_task(run_root, task_id)
 
 
-def list_tasks(tasks_root: str) -> dict[str, Any]:
+def list_tasks(tasks_root: str | None = None) -> dict[str, Any]:
     """列出可选任务，但永远不替用户选择任务。"""
-    root = _normal_tasks_root(tasks_root)
+    resolved_root = resolve_tasks_root(tasks_root)
+    root = Path(resolved_root["tasks_root"])
     tasks: list[dict[str, Any]] = []
     invalid_tasks: list[dict[str, str]] = []
-    for path in sorted(root.iterdir(), key=lambda item: item.name, reverse=True):
+    paths = root.iterdir() if root.exists() else []
+    for path in sorted(paths, key=lambda item: item.name, reverse=True):
         if not path.name.startswith("task-"):
             continue
         try:
@@ -189,6 +318,7 @@ def list_tasks(tasks_root: str) -> dict[str, Any]:
     tasks.sort(key=lambda item: item["created_at"], reverse=True)
     return {
         "ok": True,
+        "tasks_root": str(root),
         "task_count": len(tasks),
         "tasks": tasks,
         "invalid_tasks": invalid_tasks,
@@ -200,10 +330,12 @@ def list_tasks(tasks_root: str) -> dict[str, Any]:
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     sub = root.add_subparsers(dest="command", required=True)
+    resolve_parser = sub.add_parser("resolve-root")
+    resolve_parser.add_argument("--tasks-root")
     create_parser = sub.add_parser("create")
-    create_parser.add_argument("--tasks-root", required=True)
+    create_parser.add_argument("--tasks-root")
     list_parser = sub.add_parser("list")
-    list_parser.add_argument("--tasks-root", required=True)
+    list_parser.add_argument("--tasks-root")
     validate_parser = sub.add_parser("validate")
     validate_parser.add_argument("--run-root", required=True)
     validate_parser.add_argument("--task-id", required=True)
@@ -212,7 +344,9 @@ def parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = parser().parse_args()
-    if args.command == "create":
+    if args.command == "resolve-root":
+        result = resolve_tasks_root(args.tasks_root)
+    elif args.command == "create":
         result = create_task(args.tasks_root)
     elif args.command == "list":
         result = list_tasks(args.tasks_root)

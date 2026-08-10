@@ -3,7 +3,8 @@ name: Validate skill
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -11,20 +12,31 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
+
       - name: Compile Python scripts
         run: python -m compileall -q job-finding/scripts
+
+      - name: Run Python regression tests
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -m unittest discover -s job-finding/tests -p "test_*.py" -v
+
       - name: Check Node script syntax
         run: |
           node --check job-finding/scripts/boss_collect_s1.mjs
           node --check job-finding/scripts/boss_read_s2.mjs
+
       - name: Verify required skill files
         run: |
           test -f job-finding/SKILL.md
