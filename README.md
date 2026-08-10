@@ -1,64 +1,136 @@
-# Job-finding
+# Job-finding Skill
 
-一个面向 Codex 的中文求职岗位研究 skill：从用户目标与简历出发，分阶段采集 BOSS 直聘岗位、提取有限岗位证据、初筛、公司网络背调、评分，并生成可追溯的岗位决策报告。
+[![当前版本](https://img.shields.io/badge/release-v0.1.1-blue)](https://github.com/Zhang-ZheWei/Job-finding-Skill/releases/tag/v0.1.1)
+[![Validate skill](https://github.com/Zhang-ZheWei/Job-finding-Skill/actions/workflows/validate.yml/badge.svg)](https://github.com/Zhang-ZheWei/Job-finding-Skill/actions/workflows/validate.yml)
+[![许可证](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-> 仅在你有权访问招聘平台且遵守其服务条款、当地法律和数据使用要求的前提下使用。遇到登录墙、验证码或安全验证时，skill 会停止，不会尝试绕过访问控制。
+一个面向 Codex 的中文岗位研究 skill。它根据你的求职目标和简历，分阶段完成 BOSS 直聘岗位采集、岗位初筛、公司背调、综合评分，并生成可追溯的岗位决策报告。
+
+当前稳定版本：[`v0.1.1`](https://github.com/Zhang-ZheWei/Job-finding-Skill/releases/tag/v0.1.1)
+
+> 本项目用于辅助岗位研究和求职决策，不替代使用者对岗位、公司及个人职业选择的独立判断。请在遵守目标网站服务条款和适用法律的前提下使用。
 
 ## 能做什么
 
-- **S0**：固定提问流程，固化求职目标、个人画像和搜索范围。
-- **S1–S2**：按已确认的城市 URL 和关键词采集岗位索引，并生成有限的职位摘要与工商主体信息。
-- **S3–S5**：基于证据初筛岗位、对通过岗位的公司进行网络背调，并给出综合评分。
-- **S6**：从结构化结果生成 Markdown 岗位决策报告。
+- 引导确认岗位方向、简历、候选人条件、城市、关键词和公司偏好。
+- 按城市和关键词采集 BOSS 直聘岗位，支持中断后继续。
+- 提取有限岗位摘要，并根据简历和求职条件进行初筛。
+- 对初筛通过岗位的公司进行基本信息、公开风险和员工评价背调。
+- 对岗位匹配度和公司情况进行综合评分。
+- 生成包含岗位排序、岗位分析和公司背调的 Markdown 报告。
+- 将每次求职任务保存在独立目录，避免不同任务的数据混淆。
 
-每一阶段必须由用户确认后单独执行；不会自行推进到下一阶段。
+## 工作流程
+
+| 阶段 | 内容 |
+| --- | --- |
+| S0 | 确认求职目标、简历、筛选条件、城市 URL、搜索方式和保存目录 |
+| S1 | 采集岗位索引 |
+| S2 | 读取岗位详情并生成有限摘要 |
+| S3 | 根据候选人条件和岗位证据进行初筛 |
+| S4 | 对通过初筛岗位的公司进行网络背调 |
+| S5 | 计算岗位匹配分、公司评价分和综合评级 |
+| S6 | 生成最终岗位决策报告 |
+
+每个阶段独立执行。当前阶段完成后，skill 不会在未经允许的情况下自动进入下一阶段。
+
+## 运行要求
+
+- Codex
+- Python 3
+- Node.js 24
+- [`web-access`](https://github.com/eze-is/web-access) skill
+- 可用且已由用户授权的 Chrome 会话
+
+S1、S2 和 S4 需要访问真实网页。登录状态、验证码、安全验证、网站结构变化或访问限制都可能导致对应阶段暂停。
 
 ## 安装
 
-将本仓库克隆到 Codex 的 skills 目录，或将其中的 `job-finding/` 文件夹复制到你的 skills 目录：
+克隆仓库：
 
 ```bash
-git clone https://github.com/Zhang-ZheWei/Job-finding.git
-cp -R Job-finding/job-finding "$CODEX_HOME/skills/job-finding"
+git clone https://github.com/Zhang-ZheWei/Job-finding-Skill.git
+cd Job-finding-Skill
 ```
 
-然后在 Codex 中使用：
-
-```text
-使用 $job-finding 帮我分阶段采集、初筛、背调、评分并生成 BOSS 岗位决策报告。
-```
-
-## 依赖
-
-- Python 3（仅使用标准库）
-- Node.js 24：S1 / S2 的浏览器交互脚本需要
-- 已安装并可用的 `$web-access` skill，以及已授权的 Chrome 会话
-
-请先在本机检查这些依赖；本项目不会保存登录凭据、Cookie、完整职位正文或页面 HTML。
-
-## 目录说明
-
-```text
-job-finding/
-├── SKILL.md          # 主工作流与安全边界
-├── agents/           # Codex 界面元数据
-├── references/       # S0–S6 阶段契约
-└── scripts/          # 配置、结构化存储与报告生成脚本
-```
-
-## 开发与校验
+将仓库中的 `job-finding/` 文件夹复制到 Codex skills 目录：
 
 ```bash
-python3 -m compileall -q job-finding/scripts
-node --check job-finding/scripts/boss_collect_s1.mjs
-node --check job-finding/scripts/boss_read_s2.mjs
+CODEX_SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
+mkdir -p "$CODEX_SKILLS_DIR"
+cp -R job-finding "$CODEX_SKILLS_DIR/job-finding"
 ```
 
+如果目标位置已存在旧版本，请先确认其中没有需要保留的本地修改。安装或更新后，重新开始一个 Codex 任务。
 
-## 贡献与反馈
+## 开始使用
 
-欢迎通过 [Issues](https://github.com/Zhang-ZheWei/Job-finding/issues) 报告问题或提出建议。请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，并在提交变更时同步更新 [CHANGELOG.md](CHANGELOG.md)。
+在 Codex 中输入：
 
-## 许可证
+```text
+使用 $job-finding 根据我的目标和简历引导配置任务，采集、初筛、背调并生成 BOSS 岗位决策报告。
+```
 
-本项目采用 [MIT License](LICENSE)。
+也可以直接表达需求：
+
+```text
+帮我根据简历筛选广州和深圳的 AI 产品岗位。
+```
+
+```text
+继续我之前的岗位搜索任务。
+```
+
+新任务开始后，skill 会逐步确认：
+
+1. 目标岗位方向和关键词；
+2. 简历或是否明确不提供简历；
+3. 硬性条件、软偏好和公司偏好；
+4. 搜索城市及对应的 BOSS 城市 URL；
+5. 搜索方式和目标数量；
+6. 任务保存目录。
+
+只有完整任务卡得到明确确认后，才会创建任务目录并开始正式执行。
+
+## 输出内容
+
+每次任务使用独立的 `task-时间戳` 目录，主要包含：
+
+```text
+task-YYYYMMDD-HHMMSS-ffffff/
+├── job-research-data/       # 各阶段结构化数据
+└── result/
+    └── 岗位决策报告.md       # 最终报告
+```
+
+默认保存位置：
+
+- macOS：用户“文稿/Documents”目录下的 `Codex岗位搜索任务`
+- Windows：系统“文档”目录下的 `Codex岗位搜索任务`
+- 其他系统：由用户提供保存目录
+
+用户可以在确认任务卡之前更改保存目录。
+
+## 更新
+
+如果保留了克隆仓库，可以拉取最新稳定版本：
+
+```bash
+git switch main
+git pull --ff-only origin main
+```
+
+然后重新将 `job-finding/` 同步到 Codex skills 目录。已发布版本与更新记录可查看 [Releases](https://github.com/Zhang-ZheWei/Job-finding-Skill/releases) 和 [CHANGELOG.md](CHANGELOG.md)。
+
+## 隐私与限制
+
+- 不保存完整简历、完整 JD、整页 HTML、Cookie 或搜索结果页正文。
+- 不尝试绕过登录、验证码、安全验证、访问控制或反自动化措施。
+- 不要在 Issue 中提交简历、联系方式、Cookie、Token、完整 JD 或其他隐私数据。
+- 招聘信息可能过期、下线或被招聘方修改，申请前应重新核实。
+- 公司背调结果仅用于求职参考，不构成法律、投资或雇佣建议。
+
+## 反馈与许可证
+
+- 使用 [Issues](https://github.com/Zhang-ZheWei/Job-finding-Skill/issues) 报告问题或提出建议。
+- 本项目采用 [MIT License](LICENSE)。
