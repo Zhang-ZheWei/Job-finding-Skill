@@ -48,15 +48,18 @@ S1、S2 和 S4 需要访问真实网页。登录状态、验证码、安全验�
 
 推荐直接使用 Codex Agent 从 GitHub 安装，无需手动复制文件。
 
-将下面的内容发送给 Codex，并把仓库地址替换为实际地址：
+将下面的内容发送给 Codex：
 
 ```text
-使用 $skill-installer 从以下 GitHub 仓库安装 job-finding Skill：
+请使用 $skill-installer 安装以下 GitHub Skill：
 
-仓库地址：https://github.com/<用户名>/<仓库名>
-Skill 路径：job-finding
+https://github.com/Zhang-ZheWei/Job-finding-Skill/tree/v0.1.1/job-finding
 
-请安装到默认 Codex Skills 目录。安装前检查是否存在同名 Skill；如果已经存在，请先告诉我，不要直接覆盖。安装完成后请验证 Skill 结构，并告诉我实际安装路径。
+请安装到默认 Codex Skills 目录。安装前检查是否存在同名 skill；如果已经存在，请先告诉我，不要直接覆盖。
+
+安装完成后，请确认 SKILL.md 已正确安装，告诉我实际安装路径，并提醒我该 skill 将在下一个 Codex 任务中可用。
+
+同时检查 web-access skill 是否已经安装；如果缺少，只告诉我缺少该依赖，不要擅自安装。
 ```
 
 ## 开始使用
