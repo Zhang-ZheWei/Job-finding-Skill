@@ -1,6 +1,7 @@
 ---
 name: job-finding
 description: >-
+  当用户提出“帮我找工作、找岗位或推荐职位”“搜索、搜集或采集 BOSS 直聘岗位”“帮我筛岗位、根据简历筛岗位或判断岗位是否适合”“岗位初筛、公司背调、岗位评分或生成岗位报告”“开始或继续岗位搜索任务”等请求时使用。
   通过 S0 固定提问模板配置岗位搜索任务，并分阶段采集 BOSS 直聘岗位信息。用于引导用户确认
   岗位目标、简历、结构化个人画像、城市 URL 和搜索方式，生成带信息来源的 config.json；或执行 S1 岗位索引采集，或根据 S1 结果执行
   S2 岗位详情摘要与 BOSS 公司页工商主体提取，或根据 S2 证据执行 S3 岗位初筛，或对通过岗位执行 S4 公司网络背调、S5 综合评分和 S6 最终报告。
@@ -13,7 +14,7 @@ description: >-
 
 ## 任务创建与隔离
 
-新任务开始前先完整阅读并执行[任务创建与隔离契约](references/task-isolation.md)。调用 `task_manager.py create`，由程序使用当前时间戳生成唯一 `task_id` 和独立 `{run_root}`；不得询问用户自定义任务名称，不得把当前工作区或旧任务目录直接作为新任务目录。
+新任务开始前先完整阅读并执行[任务创建与隔离契约](references/task-isolation.md)。先调用 `task_manager.py resolve-root` 解析系统默认或用户指定的 `tasks_root`，只在 S0 任务卡中展示真实绝对路径，不提前创建目录。用户确认完整任务卡后才调用 `task_manager.py create`，由程序使用当前时间戳生成唯一 `task_id` 和独立 `{run_root}`；不得询问用户自定义任务名称，不得把当前工作区或旧任务目录直接作为新任务目录。
 
 继续旧任务时调用 `task_manager.py list`，向用户展示可选时间戳标识并要求明确选择。即使只有一个历史任务，也不得自动选择。S0–S6 所有读取或写入任务目录的正式命令都必须携带同一个 `--task-id`；程序统一确认 `task_id`、目录名和 `task.json` 一致。
 
@@ -23,7 +24,7 @@ description: >-
 
 将用户回答、简历和职业画像统一转换为契约定义的 `information_sources`、`candidate_profile`、`job_target`、`company_preferences` 和 `search_scope`。每条个人事实和偏好必须引用信息来源，不得保存简历全文或将推测写成事实。在最终任务卡确认前禁止访问 BOSS 或执行 S1。
 
-只有用户对完整任务卡明确回复`确认执行`后，才能调用 `task_config.py prepare` 写入 `{run_root}/job-research-data/config.json`。写入后必须调用 `task_config.py validate`。配置缺失、校验失败或已有不同配置时停止。
+只有用户对完整任务卡明确回复`确认执行`后，才能在任务卡确认的 `tasks_root` 下创建任务，再调用 `task_config.py prepare` 写入 `{run_root}/job-research-data/config.json`。写入后必须调用 `task_config.py validate`。配置缺失、校验失败或已有不同配置时停止。
 
 S0 配置完成只表示任务输入已经固定，不代表任何采集阶段完成。S1、S2 和 S3 均继承同一 `config_hash`；S3 直接从该配置生成只读筛选视图，不重复创建用户画像文件。
 

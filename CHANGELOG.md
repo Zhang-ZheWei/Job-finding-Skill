@@ -1,11 +1,25 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project are documented in this file.
+本文件记录项目各版本的重要变更。
+
+## [0.1.1] - 2026-08-10
+
+### 修复
+
+- 延迟创建任务目录，只有用户确认完整的 S0 任务卡后才创建。
+- 改进 macOS 和 Windows 默认任务保存目录的解析。
+- 防止列出历史任务或检查路径时意外创建目录。
+- 改进自定义任务保存路径校验和任务身份隔离。
+
+### 新增
+
+- 新增覆盖任务管理及 S1–S6 工作流的自动化回归测试。
+- 扩展 skill 触发描述，更准确识别岗位搜索、岗位筛选、公司背调和报告生成请求。
 
 ## [0.1.0] - 2026-08-08
 
-### Added
+### 新增
 
-- Initial public release of the `job-finding` Codex skill.
-- S0–S6 staged workflow for job research, screening, company research, scoring, and reporting.
-- Structured Python storage and validation scripts plus browser-facing Node scripts.
+- 首次公开发布 `job-finding` Codex skill。
+- 支持 S0–S6 分阶段岗位采集、初筛、公司背调、评分和报告生成。
+- 提供结构化数据存储、校验脚本和浏览器交互脚本。
