@@ -4,7 +4,7 @@
 [![Validate skill](https://github.com/Zhang-ZheWei/Job-finding-Skill/actions/workflows/validate.yml/badge.svg)](https://github.com/Zhang-ZheWei/Job-finding-Skill/actions/workflows/validate.yml)
 [![许可证](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-一个面向 Codex 的中文岗位研究 skill。它根据你的求职目标和简历，分阶段完成 BOSS 直聘岗位采集、岗位初筛、公司背调、综合评分，并生成可追溯的岗位决策报告。
+一个面向 Codex 的中文岗位研究 skill。它根据你的求职目标和简历，分阶段完成 BOSS 某聘岗位采集、岗位初筛、公司背调、综合评分，并生成可追溯的岗位决策报告。
 
 当前稳定版本：[`v0.1.1`](https://github.com/Zhang-ZheWei/Job-finding-Skill/releases/tag/v0.1.1)
 
